@@ -30,7 +30,7 @@ class RegisterUserAPIView(generics.CreateAPIView):
 #getting the model file path using Django storage system
   
 def get_model_path():
-    model_filename = 'your_model.pkl'  # Replace with your filename
+    model_filename = 'your_model.pkl'  
     return settings.MEDIA_ROOT / model_filename
 
 from rest_framework.views import APIView
