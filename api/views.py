@@ -74,7 +74,7 @@ class LoginAPIView(APIView):
             user = authenticate(request, username=username, password=password)
             if user is not None:
                 login(request, user)
-                redirect_url = '/conversation-page/'  # Modify this to your desired URL
+                redirect_url = '/conversation-page/'  
                 return Response({'redirect_url': redirect_url}, status=status.HTTP_200_OK)
             else:
                 return Response({'message': 'Invalid credentials.'}, status=status.HTTP_400_BAD_REQUEST)
