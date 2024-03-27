@@ -22,47 +22,61 @@ class UserDetailAPI(APIView):
     return Response(serializer.data)
 
 #Class based view to register user
+from django.contrib.auth import authenticate, login
+from django.shortcuts import redirect
+from rest_framework import status
+
 class RegisterUserAPIView(generics.CreateAPIView):
-  permission_classes = (AllowAny,)
-  serializer_class = RegisterSerializer
+    permission_classes = (AllowAny,)
+    serializer_class = RegisterSerializer
 
-
-#getting the model file path using Django storage system
-  
-def get_model_path():
-    model_filename = 'your_model.pkl'  
-    return settings.MEDIA_ROOT / model_filename
-
-from rest_framework.views import APIView
-from rest_framework import status 
-from rest_framework.response import Response
-from .serializers import ChatbotInputSerializer, ChatbotOutputSerializer
-
-class ChatbotAPI(APIView):
-    serializer_class = ChatbotInputSerializer
-
-    def post(self, request, format=None):
-        serializer = self.serializer_class(data=request.data)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            user_message = serializer.validated_data['user_message']
-
-            # Preprocess user message (if needed)
-
-            # Securely load the model from storage
-            model_path = get_model_path()
-            if default_storage.exists(model_path):
-                with default_storage.open(model_path, 'rb') as f:
-                    chatbot_model = load(f)
+            self.perform_create(serializer)
+            # Authenticate user
+            user = authenticate(username=serializer.data['username'],
+                                password=request.data['password'])
+            if user is not None:
+                login(request, user)
+                return redirect('/conversation-page/')  
             else:
-                return Response({'error': 'Model file not found'}, status=status.HTTP_404_NOT_FOUND)
-
-            # Get response from the loaded model
-            bot_response = chatbot_model.predict(user_message)  # Adapt for your framework
-
-            # Postprocess bot response (if needed)
-
-            serializer = ChatbotOutputSerializer({'bot_response': bot_response})
-            return Response(serializer.data)
+                return Response({'message': 'Failed to authenticate user.'},
+                                status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+class ConversationAPIView(APIView):
+    def get(self, request):
+        
+        conversation_data = {...}  
+        return Response({'message': 'Welcome to the conversation page!'})
+    
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import authenticate, login
+from .serializers import LoginSerializer
+
+class LoginAPIView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            username = serializer.validated_data.get('username')
+            password = serializer.validated_data.get('password')
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                redirect_url = '/conversation-page/'  # Modify this to your desired URL
+                return Response({'redirect_url': redirect_url}, status=status.HTTP_200_OK)
+            else:
+                return Response({'message': 'Invalid credentials.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
